@@ -1,0 +1,3 @@
+Function App Name: NewsFunctionApp29798
+Service Bus Namespace: NewsServiceBus1490
+Service Bus Queue: NewsQueue

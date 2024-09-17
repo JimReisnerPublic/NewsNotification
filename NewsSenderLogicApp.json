@@ -1,0 +1,191 @@
+{
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "actions": {
+        "Parse_Service_Bus_Message": {
+          "inputs": {
+            "content": "@triggerBody()",
+            "schema": {
+              "properties": {
+                "NewsItem": {
+                  "properties": {
+                    "Channel": { "type": "string" },
+                    "Img": { "type": "string" },
+                    "NewsItemSent": { "type": "boolean" },
+                    "Snippet": { "type": "string" },
+                    "Time": { "type": "string" },
+                    "Title": { "type": "string" },
+                    "Url": { "type": "string" },
+                    "id": { "type": "string" }
+                  },
+                  "type": "object"
+                },
+                "Subscriber": {
+                  "properties": {
+                    "EmailId": { "type": "string" },
+                    "Name": { "type": "string" }
+                  },
+                  "type": "object"
+                },
+                "id": { "type": "string" }
+              },
+              "type": "object"
+            }
+          },
+          "runAfter": {},
+          "type": "ParseJson"
+        },
+        "Log_Parsed_Content": {
+          "inputs": "@body('Parse_Service_Bus_Message')",
+          "runAfter": {
+            "Parse_Service_Bus_Message": [ "Succeeded" ]
+          },
+          "type": "Compose"
+        },
+        "Store_Parsed_Data": {
+          "inputs": "@body('Parse_Service_Bus_Message')",
+          "runAfter": {
+            "Log_Parsed_Content": [ "Succeeded" ]
+          },
+          "type": "Compose"
+        },
+        "Check_Email_Not_Empty": {
+          "actions": {
+            "Send_email": {
+              "inputs": {
+                "body": {
+                  "content": {
+                    "html": "@{body('Parse_Service_Bus_Message')?['NewsItem']?['Title']}\n\n@{body('Parse_Service_Bus_Message')?['NewsItem']?['Snippet']}",
+                    "subject": "From Jimbo's NewsNotifier: @{body('Parse_Service_Bus_Message')?['NewsItem']?['Title']}"
+                  },
+                  "importance": "Normal",
+                  "recipients": {
+                    "to": [
+                      {
+                        "address": "@{body('Parse_Service_Bus_Message')?['Subscriber']?['EmailId']}"
+                      }
+                    ]
+                  },
+                  "senderAddress": "jim.reisner@gmail.com"
+                },
+                "host": {
+                  "connection": {
+                    "name": "@parameters('$connections')['acsemail']['connectionId']"
+                  }
+                },
+                "method": "post",
+                "path": "/emails:sendGAVersion",
+                "queries": {
+                  "api-version": "2023-03-31"
+                }
+              },
+              "runAfter": {},
+              "type": "ApiConnection"
+            }
+          },
+          "expression": {
+            "and": [
+              {
+                "not": {
+                  "equals": [
+                    "@empty(body('Parse_Service_Bus_Message')?['Subscriber']?['EmailId'])",
+                    true
+                  ]
+                }
+              }
+            ]
+          },
+          "runAfter": {
+            "Store_Parsed_Data": [ "Succeeded" ]
+          },
+          "type": "If"
+        },
+        "Create_or_update_document_(V3)": {
+          "inputs": {
+            "body": {
+              "NewsItem": {
+                "Channel": "@{outputs('Store_Parsed_Data')?['NewsItem']?['Channel']}",
+                "Img": "@{outputs('Store_Parsed_Data')?['NewsItem']?['Img']}",
+                "NewsItemSent": true,
+                "Snippet": "@{outputs('Store_Parsed_Data')?['NewsItem']?['Snippet']}",
+                "Time": "@{outputs('Store_Parsed_Data')?['NewsItem']?['Time']}",
+                "Title": "@{outputs('Store_Parsed_Data')?['NewsItem']?['Title']}",
+                "Url": "@{outputs('Store_Parsed_Data')?['NewsItem']?['Url']}",
+                "id": "@{outputs('Store_Parsed_Data')?['NewsItem']?['id']}"
+              },
+              "Subscriber": {
+                "EmailId": "@{outputs('Store_Parsed_Data')?['Subscriber']?['EmailId']}",
+                "Name": "@{outputs('Store_Parsed_Data')?['Subscriber']?['Name']}"
+              },
+              "id": "@{outputs('Store_Parsed_Data')?['id']}"
+            },
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['documentdb']['connectionId']"
+              }
+            },
+            "method": "post",
+            "path": "/v2/cosmosdb/@{encodeURIComponent('AccountNameFromSettings')}/dbs/@{encodeURIComponent('NewsDb')}/colls/@{encodeURIComponent('WriteContainer')}/docs"
+          },
+          "runAfter": {
+            "Check_Email_Not_Empty": [ "Succeeded" ]
+          },
+          "type": "ApiConnection"
+        }
+      },
+      "contentVersion": "1.0.0.0",
+      "outputs": {},
+      "parameters": {
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "Get_messages": {
+          "evaluatedRecurrence": {
+            "frequency": "Minute",
+            "interval": 30
+          },
+          "inputs": {
+            "host": {
+              "connection": {
+                "name": "@parameters('$connections')['servicebus-1']['connectionId']"
+              }
+            },
+            "method": "get",
+            "path": "/@{encodeURIComponent(encodeURIComponent('newsqueue'))}/messages/head",
+            "queries": {
+              "queueType": "Main"
+            }
+          },
+          "recurrence": {
+            "frequency": "Minute",
+            "interval": 30
+          },
+          "type": "ApiConnection"
+        }
+      }
+    },
+    "parameters": {
+      "$connections": {
+        "value": {
+          "acsemail": {
+            "connectionId": "/subscriptions/1c239d5c-3b45-4f83-b21a-3708613209ff/resourceGroups/NewsResourceGroup/providers/Microsoft.Web/connections/acsemail",
+            "connectionName": "acsemail",
+            "id": "/subscriptions/1c239d5c-3b45-4f83-b21a-3708613209ff/providers/Microsoft.Web/locations/northcentralus/managedApis/acsemail"
+          },
+          "documentdb": {
+            "connectionId": "/subscriptions/1c239d5c-3b45-4f83-b21a-3708613209ff/resourceGroups/NewsResourceGroup/providers/Microsoft.Web/connections/documentdb",
+            "connectionName": "documentdb",
+            "id": "/subscriptions/1c239d5c-3b45-4f83-b21a-3708613209ff/providers/Microsoft.Web/locations/northcentralus/managedApis/documentdb"
+          },
+          "servicebus-1": {
+            "connectionId": "/subscriptions/1c239d5c-3b45-4f83-b21a-3708613209ff/resourceGroups/NewsResourceGroup/providers/Microsoft.Web/connections/servicebus-1",
+            "connectionName": "servicebus-1",
+            "id": "/subscriptions/1c239d5c-3b45-4f83-b21a-3708613209ff/providers/Microsoft.Web/locations/northcentralus/managedApis/servicebus"
+          }
+        }
+      }
+    }
+  }

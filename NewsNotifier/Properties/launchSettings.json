@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "NewsNotifier": {
+      "commandName": "Project"
+    },
+    "Container (Dockerfile)": {
+      "commandName": "Docker"
+    }
+  }
+}

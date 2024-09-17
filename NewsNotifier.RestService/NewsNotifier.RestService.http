@@ -1,0 +1,11 @@
+@NewsNotifier.RestService_HostAddress = http://localhost:5181
+
+GET {{NewsNotifier.RestService_HostAddress}}/swagger
+Accept: application/json
+
+###
+
+GET {{NewsNotifier.RestService_HostAddress}}/swagger
+Accept: application/json
+
+###

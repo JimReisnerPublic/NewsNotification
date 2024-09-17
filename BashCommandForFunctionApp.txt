@@ -1,0 +1,16 @@
+
+--for your .sh file, don't forget to 
+--select edt..EOL..Unix in notepad++
+-- view the script
+cat /mnt/c/Users/jimre/source/repos/NewsNotifier/FunctionAppAndServiceBusCreate.sh
+--edit the script
+nano /mnt/c/Users/jimre/source/repos/NewsNotifier/FunctionAppAndServiceBusCreate.sh
+
+--get execute permissions
+chmod +x /mnt/c/Users/jimre/source/repos/NewsNotifier/FunctionAppAndServiceBusCreate.sh
+
+--don't forget az login
+az login
+
+--run the script
+/mnt/c/Users/jimre/source/repos/NewsNotifier/FunctionAppAndServiceBusCreate.sh
